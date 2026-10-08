@@ -813,6 +813,11 @@ data "aws_iam_policy_document" "carga" {
   }
 
   statement {
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.s3_bucket_carga_data.arn]
+  }
+
+  statement {
     actions   = ["states:StartExecution"]
     resources = [local.state_machine_arn]
   }

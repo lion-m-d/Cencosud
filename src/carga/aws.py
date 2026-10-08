@@ -41,7 +41,7 @@ class S3CsvStore:
             code = ""
             if isinstance(response, dict):
                 code = str(response.get("Error", {}).get("Code", ""))
-            if code in {"404", "NoSuchKey", "NotFound"}:
+            if code in {"404", "403", "NoSuchKey", "NotFound", "Forbidden"}:
                 return False
             raise
         return True

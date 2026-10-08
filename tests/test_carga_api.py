@@ -88,6 +88,20 @@ def test_upload_keeps_the_original_name() -> None:
     assert bucket.saved == "raw/ventas_error.csv"
 
 
+def test_forbidden_head_means_the_name_is_free() -> None:
+    class Denied(Exception):
+        def __init__(self) -> None:
+            self.response = {"Error": {"Code": "403"}}
+
+    class Hidden(_Bucket):
+        def head_object(self, Bucket: str, Key: str) -> dict:
+            raise Denied()
+
+    bucket = Hidden(set())
+    _uri, stored = S3CsvStore(bucket, "s3-bucket-carga-data", "raw/").put_csv("a\n", "ventas.csv")
+    assert stored == "ventas.csv"
+
+
 def test_repeated_name_uses_the_next_suffix() -> None:
     bucket = _Bucket({"raw/ventas.csv", "raw/ventas_1.csv"})
     _uri, stored = S3CsvStore(bucket, "s3-bucket-carga-data", "raw/").put_csv("a\n", "ventas.csv")
