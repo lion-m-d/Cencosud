@@ -34,7 +34,10 @@ data "aws_iam_policy_document" "github_assume" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:lion-m-d/Cencosud:ref:refs/heads/master"]
+      # Repos creados después del 15 jul 2026 usan owner_id y repo_id en el subject.
+      values = [
+        "repo:lion-m-d@46204796/Cencosud@1410827007:ref:refs/heads/master"
+      ]
     }
   }
 }
