@@ -21,6 +21,7 @@ def main() -> None:
         logged = Path(log_path).read_text(encoding="utf-8", errors="replace")
         store.save_logged_metrics(logged)
         store.save_logged_rejects(logged)
+        store.save_logged_rows(logged)
     ValidateRun(YamlRuleCatalog(os.environ["RULES_PATH"]), store, store).assert_passed(
         os.environ["RUN_ID"],
         date.fromisoformat(os.environ["LOAD_DATE"]),

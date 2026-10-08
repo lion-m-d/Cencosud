@@ -11,6 +11,7 @@ from ..domain.models import Metrics, Result
 METRICS_PREFIX = "metrics#"
 RESULT_PREFIX = "result#"
 REJECT_PREFIX = "reject#"
+ROW_PREFIX = "row#"
 
 
 def checks_payload(result: Result) -> str:
@@ -168,6 +169,37 @@ class DynamoControlStore:
             saved += 1
         return saved
 
+    def save_rows(self, run_id: str, layer: str, table_name: str, records: list[dict]) -> int:
+        measured = datetime.utcnow().isoformat(timespec="seconds")
+        saved = 0
+        for index, record in enumerate(records, start=1):
+            item = {
+                "run_id": run_id,
+                "sk": f"{ROW_PREFIX}{layer}#{index:04d}",
+                "entity_key": f"{ROW_PREFIX}{layer}#{table_name}",
+                "measured_at": measured,
+                "record_type": "row",
+                "layer": layer,
+                "table_name": table_name,
+            }
+            for key, value in record.items():
+                if key not in item:
+                    item[key] = _attribute(value)
+            self._table_ref().put_item(Item=_without_empty(item))
+            saved += 1
+        return saved
+
+    def save_logged_rows(self, text: str) -> int:
+        saved = 0
+        for payload in metrics_from_log(text, "RECON_ROWS "):
+            saved += self.save_rows(
+                str(payload["run_id"]),
+                str(payload["layer"]),
+                str(payload["table_name"]),
+                list(payload.get("records") or []),
+            )
+        return saved
+
     def save_logged_rejects(self, text: str) -> int:
         saved = 0
         for payload in metrics_from_log(text, "RECON_REJECTS "):
@@ -246,6 +278,17 @@ def _grain(value: object) -> tuple[str, ...]:
     if isinstance(value, (list, tuple)):
         return tuple(str(part) for part in value if str(part))
     return tuple(part for part in str(value).split("|") if part)
+
+
+def _attribute(value: object) -> Decimal | str | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, (int, float, Decimal)):
+        return Decimal(str(value))
+    text = str(value).strip()
+    return text or None
 
 
 def _text(value: object) -> str | None:

@@ -47,6 +47,16 @@ def localize(uri: str) -> str:
     return str(destination)
 
 
+def _bronze_row(row) -> dict:
+    return {
+        "ticket_id": row["ticket_id"],
+        "tienda_id": row["tienda_id"],
+        "fecha_venta": None if row["fecha_venta"] is None else str(row["fecha_venta"])[:10],
+        "monto": row["monto"],
+        "fecha_carga": None if row["fecha_carga"] is None else str(row["fecha_carga"])[:10],
+    }
+
+
 def write_bronze(prepared, target: str) -> None:
     writer = prepared.writeTo(target).using("iceberg").tableProperty("format-version", "2")
     if iceberg_table_exists(prepared.sparkSession, target):
@@ -92,6 +102,12 @@ def main() -> None:
         input_count=input_count,
     )
     controls.save_metrics(metrics)
+    controls.save_rows(
+        args["RUN_ID"],
+        "bronze",
+        target.replace("glue_catalog.", ""),
+        [_bronze_row(row) for row in current_run.collect()],
+    )
     ValidateRun(
         YamlRuleCatalog(localize(args["RULES_URI"])),
         controls,

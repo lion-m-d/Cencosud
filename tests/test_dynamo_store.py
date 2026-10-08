@@ -91,6 +91,21 @@ def test_store_guarda_rechazos_y_los_suma_al_grano() -> None:
     assert table.items[("actual", "reject#0001")]["ticket_id"] == "T-019"
 
 
+def test_store_guarda_las_filas_de_cada_capa() -> None:
+    table = MemoryTable()
+    store = DynamoControlStore("control", table=table)
+    logged = (
+        'RECON_ROWS {"run_id":"actual","layer":"silver","table_name":"silver.ventas",'
+        '"records":[{"ticket_id":"T-001","monto":"10.50"}]}'
+    )
+    assert store.save_logged_rows(logged) == 1
+    item = table.items[("actual", "row#silver#0001")]
+    assert item["record_type"] == "row"
+    assert item["layer"] == "silver"
+    assert item["ticket_id"] == "T-001"
+    assert item["monto"] == "10.50"
+
+
 def test_store_guarda_el_veredicto() -> None:
     table = MemoryTable()
     store = DynamoControlStore("control", table=table)

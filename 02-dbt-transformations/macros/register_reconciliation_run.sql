@@ -49,6 +49,37 @@
                     "rejected_count": row[5],
                     "rejected_grain": ["ticket_id"]
                 }) %}
+                {% set silver_rows_sql %}
+                    select
+                        coalesce(cast(ticket_id as string), ''),
+                        coalesce(cast(tienda_id as string), ''),
+                        coalesce(cast(fecha_venta as string), ''),
+                        coalesce(cast(monto as string), ''),
+                        coalesce(cast(fecha_carga as string), '')
+                    from {{ result.node.relation_name }}
+                    where run_id = '{{ run_id }}'
+                {% endset %}
+                {% set silver_loaded = run_query(silver_rows_sql) %}
+                {% set silver_ns = namespace(records=[]) %}
+                {% if silver_loaded is not none %}
+                    {% for row in silver_loaded.rows %}
+                        {% set silver_ns.records = silver_ns.records + [{
+                            "ticket_id": row[0],
+                            "tienda_id": row[1],
+                            "fecha_venta": row[2],
+                            "monto": row[3],
+                            "fecha_carga": row[4]
+                        }] %}
+                    {% endfor %}
+                {% endif %}
+                {% if silver_ns.records | length > 0 %}
+                    {% do log("RECON_ROWS " ~ ({
+                        "run_id": env_var("RUN_ID", invocation_id),
+                        "layer": "silver",
+                        "table_name": "silver.ventas",
+                        "records": silver_ns.records
+                    } | tojson), info=True) %}
+                {% endif %}
             {% elif result.node.name == 'ventas_rechazadas' %}
                 {% set rejects_sql %}
                     select
@@ -103,6 +134,37 @@
                     "max_load_date": row[2],
                     "input_count": row[3]
                 }) %}
+                {% set gold_rows_sql %}
+                    select
+                        coalesce(cast(tienda_id as string), ''),
+                        coalesce(cast(fecha_venta as string), ''),
+                        coalesce(cast(tickets as string), ''),
+                        coalesce(cast(monto_total as string), ''),
+                        coalesce(cast(fecha_carga as string), '')
+                    from {{ result.node.relation_name }}
+                    where run_id = '{{ run_id }}'
+                {% endset %}
+                {% set gold_loaded = run_query(gold_rows_sql) %}
+                {% set gold_ns = namespace(records=[]) %}
+                {% if gold_loaded is not none %}
+                    {% for row in gold_loaded.rows %}
+                        {% set gold_ns.records = gold_ns.records + [{
+                            "tienda_id": row[0],
+                            "fecha_venta": row[1],
+                            "tickets": row[2],
+                            "monto_total": row[3],
+                            "fecha_carga": row[4]
+                        }] %}
+                    {% endfor %}
+                {% endif %}
+                {% if gold_ns.records | length > 0 %}
+                    {% do log("RECON_ROWS " ~ ({
+                        "run_id": env_var("RUN_ID", invocation_id),
+                        "layer": "gold",
+                        "table_name": "gold.ventas_tienda_dia",
+                        "records": gold_ns.records
+                    } | tojson), info=True) %}
+                {% endif %}
             {% endif %}
         {% endfor %}
     {% endif %}
