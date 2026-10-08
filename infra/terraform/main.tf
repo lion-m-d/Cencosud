@@ -886,6 +886,11 @@ data "aws_iam_policy_document" "carga" {
     actions   = ["sns:Publish"]
     resources = [aws_sns_topic.pipeline.arn]
   }
+
+  statement {
+    actions   = ["dynamodb:Query"]
+    resources = [aws_dynamodb_table.control.arn]
+  }
 }
 
 resource "aws_iam_role_policy" "carga" {
@@ -915,6 +920,7 @@ resource "aws_lambda_function" "carga" {
       OBJECT_KEY        = "${local.raw_prefix}ventas.csv"
       STATE_MACHINE_ARN = local.state_machine_arn
       TOPIC_ARN         = aws_sns_topic.pipeline.arn
+      CONTROL_TABLE     = aws_dynamodb_table.control.name
     }
   }
 }

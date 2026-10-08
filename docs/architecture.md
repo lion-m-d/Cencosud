@@ -30,9 +30,9 @@ adapters          YAML, Spark/Iceberg, DynamoDB, S3, Step Functions
 
 ## Decisión
 
-La cuadratura se implementa como una capacidad compartida: contratos YAML, motor Python
-independiente de Spark y adaptadores para registrar métricas en tablas Iceberg. Cada pipeline
-declara sus reglas; no vuelve a implementar el algoritmo.
+La cuadratura se implementa como una capacidad compartida: contratos YAML y un motor Python
+independiente de Spark. Las ventas quedan en Iceberg. La traza de cada ejecución queda en
+DynamoDB. Cada pipeline declara sus reglas; no vuelve a implementar el algoritmo.
 
 El identificador `run_id` lo genera Step Functions y se propaga a Glue y CodeBuild/dbt. Así se
 pueden unir las métricas de todas las capas aunque los motores sean distintos.

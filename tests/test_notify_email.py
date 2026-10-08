@@ -26,3 +26,19 @@ def test_mismatch_names_the_failed_step() -> None:
     assert "2. Silver — no concuerda" in message
     assert "3. Gold — no se ejecutó" in message
     assert "layer_ratio" in message
+
+
+def test_notice_includes_how_many_records_moved() -> None:
+    _, message = build_notice(
+        {
+            "outcome": "PASS",
+            "run_id": "abc",
+            "load_date": "2026-10-07",
+            "layers": [
+                {"layer": "bronze", "input_count": 23, "output_count": 23},
+                {"layer": "silver", "input_count": 23, "output_count": 22},
+            ],
+        }
+    )
+    assert "bronze: entraron 23, salieron 23" in message
+    assert "silver: entraron 23, salieron 22" in message

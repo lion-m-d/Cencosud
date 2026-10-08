@@ -15,6 +15,7 @@ STEPS = (
 def build_notice(event: dict) -> tuple[str, str]:
     run_id = event.get("run_id") or "sin run_id"
     load_date = event.get("load_date") or "sin fecha"
+    trace = _trace(event.get("layers") or [])
     if event.get("outcome") == "PASS":
         lines = [f"{index}. {label} — validado" for index, (_, label) in enumerate(STEPS, start=1)]
         return (
@@ -28,6 +29,7 @@ def build_notice(event: dict) -> tuple[str, str]:
                     "",
                     "Pasos registrados:",
                     *lines,
+                    *trace,
                 ]
             ),
         )
@@ -46,6 +48,7 @@ def build_notice(event: dict) -> tuple[str, str]:
                     f"run_id: {run_id}",
                     f"load_date: {load_date}",
                     "El pipeline se detuvo antes de cerrar la validación.",
+                    *trace,
                     "",
                     "Detalle:",
                     detail,
@@ -72,12 +75,24 @@ def build_notice(event: dict) -> tuple[str, str]:
                 "",
                 "Pasos registrados:",
                 *lines,
+                *trace,
                 "",
                 "Detalle:",
                 detail,
             ]
         ),
     )
+
+
+def _trace(layers: list) -> list[str]:
+    if not layers:
+        return []
+    lines = ["", "Registros por capa:"]
+    for item in layers:
+        lines.append(
+            f"- {item.get('layer')}: entraron {item.get('input_count')}, salieron {item.get('output_count')}"
+        )
+    return lines
 
 
 def _detail(cause: str) -> str:
@@ -102,10 +117,38 @@ def _detail(cause: str) -> str:
 def handler(event: dict, _context) -> dict:
     import boto3
 
-    subject, message = build_notice(event)
+    notice = dict(event)
+    notice["layers"] = _layers(str(event.get("run_id") or ""))
+    subject, message = build_notice(notice)
     boto3.client("sns").publish(
         TopicArn=os.environ["TOPIC_ARN"],
         Subject=subject[:100],
         Message=message,
     )
     return {"subject": subject}
+
+
+def _layers(run_id: str) -> list[dict]:
+    table_name = os.environ.get("CONTROL_TABLE")
+    if not table_name or not run_id:
+        return []
+    try:
+        import boto3
+        from boto3.dynamodb.conditions import Key
+
+        response = boto3.resource("dynamodb").Table(table_name).query(
+            KeyConditionExpression=Key("run_id").eq(run_id)
+        )
+    except Exception:
+        return []
+    order = {"bronze": 0, "silver": 1, "gold": 2}
+    metrics = [item for item in response.get("Items", []) if item.get("record_type") == "metrics"]
+    metrics.sort(key=lambda item: order.get(str(item.get("layer")), 9))
+    return [
+        {
+            "layer": item.get("layer"),
+            "input_count": int(item["input_count"]) if item.get("input_count") is not None else None,
+            "output_count": int(item["output_count"]) if item.get("output_count") is not None else None,
+        }
+        for item in metrics
+    ]
