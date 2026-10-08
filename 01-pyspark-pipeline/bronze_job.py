@@ -62,6 +62,22 @@ def _metadata_missing(exc: BaseException) -> bool:
     return "specified key does not exist" in text or "not found" in text and "metadata" in text
 
 
+def _forget_catalog_table(spark, target: str) -> None:
+    """Quita la tabla del catálogo sin leer el metadata de Iceberg."""
+    catalog, database, table = target.split(".")
+    try:
+        spark.sql(f"CALL {catalog}.system.uncache_table('{database}.{table}')")
+    except Exception:
+        pass
+    try:
+        boto3.client("glue").delete_table(DatabaseName=database, Name=table)
+    except Exception as exc:
+        response = getattr(exc, "response", None)
+        code = response.get("Error", {}).get("Code", "") if isinstance(response, dict) else ""
+        if code != "EntityNotFoundException":
+            raise
+
+
 def write_bronze(prepared, target: str) -> None:
     spark = prepared.sparkSession
 
@@ -75,7 +91,7 @@ def write_bronze(prepared, target: str) -> None:
         except Exception as exc:
             if not _metadata_missing(exc):
                 raise
-            spark.sql(f"DROP TABLE IF EXISTS {target}")
+            _forget_catalog_table(spark, target)
     try:
         writer().create()
     except Exception as exc:
