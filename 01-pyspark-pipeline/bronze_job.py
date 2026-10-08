@@ -57,17 +57,31 @@ def _bronze_row(row) -> dict:
     }
 
 
+def _metadata_missing(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return "specified key does not exist" in text or "not found" in text and "metadata" in text
+
+
 def write_bronze(prepared, target: str) -> None:
-    writer = prepared.writeTo(target).using("iceberg").tableProperty("format-version", "2")
-    if iceberg_table_exists(prepared.sparkSession, target):
-        writer.append()
-        return
+    spark = prepared.sparkSession
+
+    def writer():
+        return prepared.writeTo(target).using("iceberg").tableProperty("format-version", "2")
+
+    if iceberg_table_exists(spark, target):
+        try:
+            writer().append()
+            return
+        except Exception as exc:
+            if not _metadata_missing(exc):
+                raise
+            spark.sql(f"DROP TABLE IF EXISTS {target}")
     try:
-        writer.create()
+        writer().create()
     except Exception as exc:
         if "already exists" not in str(exc).lower():
             raise
-        prepared.writeTo(target).using("iceberg").append()
+        writer().append()
 
 
 def main() -> None:
