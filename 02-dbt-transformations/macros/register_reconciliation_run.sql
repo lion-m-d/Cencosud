@@ -135,7 +135,7 @@
             {% elif result.node.name == 'ventas_tienda_dia' %}
                 {% set metrics_sql %}
                     select
-                        count(*) as output_count,
+                        coalesce(sum(tickets), 0) as output_count,
                         count(distinct concat_ws('||', cast(tienda_id as string), cast(fecha_venta as string))) as tienda_dia,
                         cast(max(fecha_carga) as string) as max_load_date,
                         (select count(*) from {{ ref('ventas') }} where run_id = '{{ run_id }}') as input_count

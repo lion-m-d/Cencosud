@@ -30,6 +30,23 @@ def test_mismatch_names_the_failed_step() -> None:
     assert "layer_ratio" in message
 
 
+def test_gold_trace_counts_tickets_not_store_rows() -> None:
+    _, message = build_notice(
+        {
+            "outcome": "PASS",
+            "run_id": "abc",
+            "load_date": "2026-10-07",
+            "file_name": "ventas.csv",
+            "layers": [
+                {"layer": "bronze", "input_count": 22, "output_count": 22},
+                {"layer": "silver", "input_count": 22, "output_count": 22},
+                {"layer": "gold", "input_count": 22, "output_count": 22},
+            ],
+        }
+    )
+    assert "gold: entraron 22, salieron 22" in message
+
+
 def test_notice_includes_how_many_records_moved() -> None:
     _, message = build_notice(
         {
