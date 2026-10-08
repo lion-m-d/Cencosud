@@ -42,3 +42,28 @@ def test_notice_includes_how_many_records_moved() -> None:
     )
     assert "bronze: entraron 23, salieron 23" in message
     assert "silver: entraron 23, salieron 22" in message
+
+
+def test_notice_names_records_left_out_of_the_file() -> None:
+    subject, message = build_notice(
+        {
+            "outcome": "PASS",
+            "run_id": "abc",
+            "load_date": "2026-10-07",
+            "layers": [
+                {"layer": "bronze", "input_count": 22, "output_count": 22},
+                {"layer": "silver", "input_count": 22, "output_count": 18, "rejected_count": 4},
+            ],
+            "rejects": [
+                {"ticket_id": "T-019", "reason": "monto vacío"},
+                {"ticket_id": "T-020", "reason": "monto vacío"},
+                {"ticket_id": "T-021", "reason": "monto vacío"},
+                {"ticket_id": "T-022", "reason": "monto vacío"},
+            ],
+        }
+    )
+    assert subject == "Se procesaron 18 de 22 registros"
+    assert "No se procesaron 4 de 22 registros enviados." in message
+    assert "Se procesaron 18 registros correctos." in message
+    assert "- T-019: monto vacío" in message
+    assert "- T-022: monto vacío" in message

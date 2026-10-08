@@ -67,6 +67,48 @@ def test_warning_rule_does_not_hard_fail() -> None:
     assert evaluate(warning, metrics("bronze", 100), metrics("silver", 0)).status == Status.WARN
 
 
+def test_mapped_rejects_keep_the_valid_rows() -> None:
+    target = metrics(
+        "silver",
+        18,
+        rejected_count=4,
+        rejected_grain=("ticket_id",),
+    )
+    result = evaluate(
+        rule(grain=("ticket_id",)),
+        metrics("bronze", 22),
+        target,
+        date(2026, 10, 7),
+    )
+    assert result.status == Status.PASS
+    assert result.ratio == pytest.approx(1.0)
+
+
+def test_unexplained_loss_still_fails() -> None:
+    target = metrics("silver", 18, rejected_count=0, rejected_grain=("ticket_id",))
+    result = evaluate(rule(grain=("ticket_id",)), metrics("bronze", 22), target)
+    assert result.status == Status.FAIL
+
+
+def test_rejects_do_not_change_another_grain() -> None:
+    source = metrics("silver", 6, grain_count=6, output_count=18)
+    target = metrics(
+        "gold",
+        6,
+        grain_count=6,
+        output_count=6,
+        rejected_count=4,
+        rejected_grain=("ticket_id",),
+    )
+    result = evaluate(
+        rule(grain=("tienda_id", "fecha_venta"), min_ratio=0.98, max_ratio=1.02, source_layer="silver", target_layer="gold"),
+        source,
+        target,
+    )
+    assert result.ratio == pytest.approx(1.0)
+    assert result.status == Status.PASS
+
+
 def test_different_runs_are_rejected() -> None:
     target = metrics("silver", 10, run_id="another-run")
     with pytest.raises(ValueError, match="run_id"):

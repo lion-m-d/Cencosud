@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from ..domain.checks import DEFAULT_CHECKS, ControlCheck
+from ..domain.checks import DEFAULT_CHECKS, ControlCheck, compared_counts
 from ..domain.models import Metrics, Result, Rule, Status
 
 
@@ -38,7 +38,6 @@ def evaluate(
         status = Status.WARN
     else:
         status = Status.PASS
-    source_count = source.grain_count if source.grain_count is not None else source.output_count
-    target_count = target.grain_count if target.grain_count is not None else target.output_count
+    source_count, target_count = compared_counts(rule, source, target)
     ratio = target_count / source_count if source_count > 0 else None
     return Result(source.run_id, rule.rule_id, status, source_count, target_count, ratio, produced)

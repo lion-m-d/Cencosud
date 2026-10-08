@@ -18,7 +18,9 @@ def main() -> None:
     )
     log_path = os.environ.get("DBT_LOG")
     if log_path and Path(log_path).is_file():
-        store.save_logged_metrics(Path(log_path).read_text(encoding="utf-8", errors="replace"))
+        logged = Path(log_path).read_text(encoding="utf-8", errors="replace")
+        store.save_logged_metrics(logged)
+        store.save_logged_rejects(logged)
     ValidateRun(YamlRuleCatalog(os.environ["RULES_PATH"]), store, store).assert_passed(
         os.environ["RUN_ID"],
         date.fromisoformat(os.environ["LOAD_DATE"]),

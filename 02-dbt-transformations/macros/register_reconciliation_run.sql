@@ -10,8 +10,13 @@
     {{ return(table.rows[0]) }}
 {% endmacro %}
 
+{% macro log_rejects(payload) %}
+    {% do log("RECON_REJECTS " ~ (payload | tojson), info=True) %}
+{% endmacro %}
+
 {% macro register_reconciliation_run(results) %}
     -- depends_on: {{ ref('ventas') }}
+    -- depends_on: {{ ref('ventas_rechazadas') }}
     -- depends_on: {{ source('bronze', 'ventas') }}
     {% if execute %}
         {% set run_id = env_var('RUN_ID', invocation_id) | replace("'", "''") %}
@@ -24,7 +29,9 @@
                         count(distinct concat_ws('||', cast(tienda_id as string), cast(fecha_venta as string))) as tienda_dia,
                         cast(max(fecha_carga) as string) as max_load_date,
                         (select count(*) from {{ source('bronze', 'ventas') }}
-                         where _run_id = '{{ run_id }}') as input_count
+                         where _run_id = '{{ run_id }}') as input_count,
+                        (select count(*) from {{ ref('ventas_rechazadas') }}
+                         where run_id = '{{ run_id }}') as rejected_count
                     from {{ result.node.relation_name }}
                     where run_id = '{{ run_id }}'
                 {% endset %}
@@ -38,8 +45,42 @@
                     "grain_count": row[1],
                     "grain_counts": {"ticket_id": row[1], "tienda_id|fecha_venta": row[2]},
                     "max_load_date": row[3],
-                    "input_count": row[4]
+                    "input_count": row[4],
+                    "rejected_count": row[5],
+                    "rejected_grain": ["ticket_id"]
                 }) %}
+            {% elif result.node.name == 'ventas_rechazadas' %}
+                {% set rejects_sql %}
+                    select
+                        coalesce(cast(ticket_id as string), ''),
+                        coalesce(cast(tienda_id as string), ''),
+                        coalesce(cast(fecha_venta as string), ''),
+                        coalesce(cast(monto as string), ''),
+                        reason
+                    from {{ result.node.relation_name }}
+                    where run_id = '{{ run_id }}'
+                {% endset %}
+                {% set rejected = run_query(rejects_sql) %}
+                {% set records = [] %}
+                {% if rejected is not none %}
+                    {% for row in rejected.rows %}
+                        {% if loop.index0 < 100 %}
+                            {% do records.append({
+                                "ticket_id": row[0],
+                                "tienda_id": row[1],
+                                "fecha_venta": row[2],
+                                "monto": row[3],
+                                "reason": row[4]
+                            }) %}
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+                {% if records | length > 0 %}
+                    {% do log_rejects({
+                        "run_id": env_var("RUN_ID", invocation_id),
+                        "records": records
+                    }) %}
+                {% endif %}
             {% elif result.node.name == 'ventas_tienda_dia' %}
                 {% set metrics_sql %}
                     select

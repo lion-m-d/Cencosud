@@ -14,3 +14,11 @@ models:
         tests: [not_null]
       - name: run_id
         tests: [not_null]
+
+  - name: ventas_rechazadas
+    description: Registros del archivo que no pasan a Silver ni a Gold.
+    columns:
+      - name: reason
+        tests: [not_null]
+      - name: run_id
+        tests: [not_null]

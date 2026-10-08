@@ -10,5 +10,5 @@ select
     current_timestamp() as processed_at
 from {{ source('bronze', 'ventas') }}
 where _run_id = '{{ var("run_id") | replace("'", "''") }}'
-  and ticket_id is not null
-  and monto is not null
+  and nullif(trim(cast(ticket_id as string)), '') is not null
+  and nullif(trim(cast(monto as string)), '') is not null

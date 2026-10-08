@@ -56,6 +56,8 @@ class Metrics:
     snapshot_id: str | None = None
     measured_at: datetime = field(default_factory=datetime.utcnow)
     grain_counts: dict[str, int] = field(default_factory=dict)
+    rejected_count: int | None = None
+    rejected_grain: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

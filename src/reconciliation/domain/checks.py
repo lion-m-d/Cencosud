@@ -19,6 +19,15 @@ class ControlCheck(Protocol):
         """Devuelve None cuando el contrato no activa este control."""
 
 
+def compared_counts(rule: Rule, source: Metrics, target: Metrics) -> tuple[int, int]:
+    """El grano rechazado y mapeado cuenta como explicado, no como pérdida silenciosa."""
+    source_count = source.grain_count if source.grain_count is not None else source.output_count
+    target_count = target.grain_count if target.grain_count is not None else target.output_count
+    if target.rejected_count and rule.grain and rule.grain == target.rejected_grain:
+        target_count += target.rejected_count
+    return source_count, target_count
+
+
 def _failure_status(rule: Rule) -> Status:
     return Status.WARN if rule.severity == Severity.WARN else Status.FAIL
 
@@ -58,8 +67,7 @@ class RatioCheck:
         del expected_load_date
         if rule.min_ratio is None and rule.max_ratio is None:
             return None
-        source_count = source.grain_count if source.grain_count is not None else source.output_count
-        target_count = target.grain_count if target.grain_count is not None else target.output_count
+        source_count, target_count = compared_counts(rule, source, target)
         ratio = target_count / source_count if source_count > 0 else None
         low = rule.min_ratio if rule.min_ratio is not None else float("-inf")
         high = rule.max_ratio if rule.max_ratio is not None else float("inf")

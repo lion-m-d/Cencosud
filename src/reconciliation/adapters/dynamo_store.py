@@ -10,6 +10,7 @@ from ..domain.models import Metrics, Result
 
 METRICS_PREFIX = "metrics#"
 RESULT_PREFIX = "result#"
+REJECT_PREFIX = "reject#"
 
 
 def checks_payload(result: Result) -> str:
@@ -27,9 +28,8 @@ def checks_payload(result: Result) -> str:
     )
 
 
-def metrics_from_log(text: str) -> list[dict]:
+def metrics_from_log(text: str, marker: str = "RECON_METRICS ") -> list[dict]:
     found: list[dict] = []
-    marker = "RECON_METRICS "
     for line in text.splitlines():
         start = line.find(marker)
         if start < 0:
@@ -72,6 +72,8 @@ class DynamoControlStore:
             "max_load_date": metrics.max_load_date.isoformat() if metrics.max_load_date else None,
             "previous_count": _decimal(previous),
             "snapshot_id": metrics.snapshot_id,
+            "rejected_count": _decimal(metrics.rejected_count),
+            "rejected_grain": "|".join(metrics.rejected_grain) or None,
         }))
 
     def save(self, result: Result) -> None:
@@ -119,6 +121,8 @@ class DynamoControlStore:
             previous_count=_int(item.get("previous_count")),
             snapshot_id=item.get("snapshot_id"),
             measured_at=_timestamp(item["measured_at"]),
+            rejected_count=_int(item.get("rejected_count")),
+            rejected_grain=_grain(item.get("rejected_grain")),
         )
 
     def save_logged_metrics(self, text: str) -> int:
@@ -139,8 +143,35 @@ class DynamoControlStore:
                 snapshot_id=payload.get("snapshot_id"),
                 measured_at=_timestamp(measured) if measured else datetime.utcnow(),
                 grain_counts={str(key): count for key, value in raw_counts.items() if (count := _int(value)) is not None},
+                rejected_count=_int(payload.get("rejected_count")),
+                rejected_grain=_grain(payload.get("rejected_grain")),
             ))
             saved += 1
+        return saved
+
+    def save_rejects(self, run_id: str, records: list[dict]) -> int:
+        saved = 0
+        measured = datetime.utcnow().isoformat(timespec="seconds")
+        for index, record in enumerate(records, start=1):
+            self._table_ref().put_item(Item=_without_empty({
+                "run_id": run_id,
+                "sk": f"{REJECT_PREFIX}{index:04d}",
+                "entity_key": f"{REJECT_PREFIX}ventas",
+                "measured_at": measured,
+                "record_type": "reject",
+                "ticket_id": _text(record.get("ticket_id")),
+                "tienda_id": _text(record.get("tienda_id")),
+                "fecha_venta": _text(record.get("fecha_venta")),
+                "monto": _text(record.get("monto")),
+                "reason": _text(record.get("reason")) or "dato inválido",
+            }))
+            saved += 1
+        return saved
+
+    def save_logged_rejects(self, text: str) -> int:
+        saved = 0
+        for payload in metrics_from_log(text, "RECON_REJECTS "):
+            saved += self.save_rejects(str(payload["run_id"]), list(payload.get("records") or []))
         return saved
 
     def _previous_output(self, layer: str, table_name: str, run_id: str) -> int | None:
@@ -207,6 +238,21 @@ def _grain_count(
     if not stored:
         return _int(fallback)
     raise RuntimeError(f"No hay conteo del grano {key} para {run_id}/{layer}/{table_name}")
+
+
+def _grain(value: object) -> tuple[str, ...]:
+    if not value:
+        return ()
+    if isinstance(value, (list, tuple)):
+        return tuple(str(part) for part in value if str(part))
+    return tuple(part for part in str(value).split("|") if part)
+
+
+def _text(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
 
 
 def _without_empty(item: dict) -> dict:

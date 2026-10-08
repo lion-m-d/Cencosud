@@ -75,6 +75,22 @@ def test_lee_el_grano_de_la_agregacion_y_no_el_de_los_tickets() -> None:
     assert por_tienda.grain_count == 6
 
 
+def test_store_guarda_rechazos_y_los_suma_al_grano() -> None:
+    table = MemoryTable()
+    store = DynamoControlStore("control", table=table)
+    logged = "\n".join([
+        'RECON_METRICS {"run_id":"actual","pipeline":"ventas","layer":"silver","table_name":"silver.ventas","output_count":18,"grain_count":18,"grain_counts":{"ticket_id":18},"input_count":22,"rejected_count":4,"rejected_grain":["ticket_id"]}',
+        'RECON_REJECTS {"run_id":"actual","records":[{"ticket_id":"T-019","reason":"monto vacío"}]}',
+    ])
+    assert store.save_logged_metrics(logged) == 1
+    assert store.save_logged_rejects(logged) == 1
+    current = store.read("actual", "silver", "silver.ventas", ("ticket_id",))
+    assert current.output_count == 18
+    assert current.rejected_count == 4
+    assert current.rejected_grain == ("ticket_id",)
+    assert table.items[("actual", "reject#0001")]["ticket_id"] == "T-019"
+
+
 def test_store_guarda_el_veredicto() -> None:
     table = MemoryTable()
     store = DynamoControlStore("control", table=table)
