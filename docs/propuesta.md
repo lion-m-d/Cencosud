@@ -3,7 +3,7 @@
 Demo en `us-east-2` con datos de prueba. La ejecución `62ab7a75-6846-4869-84cf-06ae96e94650`
 (`load_date` 2026-10-07) terminó en `PipelineSucceeded` y el correo dijo VALIDADO en Bronze,
 Silver y Gold. Cuando la cuadratura no pasa, Step Functions marca `PipelineFailed` y envía el
-correo de no concordancia. Las ventas no se guardan en DynamoDB.
+correo de no concordancia. Las ventas viven en Iceberg. DynamoDB guarda la traza y una copia de cada fila.
 
 ## Qué se compara y cómo
 

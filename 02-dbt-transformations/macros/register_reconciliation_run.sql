@@ -35,6 +35,26 @@
                     from {{ result.node.relation_name }}
                     where run_id = '{{ run_id }}'
                 {% endset %}
+                {% set bronze_sql %}
+                    select
+                        count(*) as output_count,
+                        count(distinct cast(ticket_id as string)) as tickets,
+                        cast(max(fecha_carga) as string) as max_load_date
+                    from {{ source('bronze', 'ventas') }}
+                    where _run_id = '{{ run_id }}'
+                {% endset %}
+                {% set bronze = metric_row('bronze.ventas', bronze_sql) %}
+                {% do log_metrics({
+                    "run_id": env_var("RUN_ID", invocation_id),
+                    "pipeline": "ventas",
+                    "layer": "bronze",
+                    "table_name": "bronze.ventas",
+                    "output_count": bronze[0],
+                    "input_count": bronze[0],
+                    "grain_count": bronze[1],
+                    "grain_counts": {"ticket_id": bronze[1]},
+                    "max_load_date": bronze[2]
+                }) %}
                 {% set row = metric_row('silver.ventas', metrics_sql) %}
                 {% do log_metrics({
                     "run_id": env_var("RUN_ID", invocation_id),

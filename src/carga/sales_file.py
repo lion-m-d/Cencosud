@@ -46,6 +46,11 @@ def _csv_section(body: str) -> str:
     )
 
 
+def _is_transport_line(value: str) -> bool:
+    text = value.strip().strip('"')
+    return text.startswith("--") or text.lower().startswith("content-")
+
+
 def _normalize_csv(text: str) -> str:
     header = _header_cells(text.split("\n", 1)[0])
     if header is None:
@@ -58,7 +63,8 @@ def _normalize_csv(text: str) -> str:
     wrote = False
     for row in reader:
         cleaned = {(key or "").strip().strip('"').lstrip("\ufeff"): value for key, value in row.items()}
-        if not cleaned.get("ticket_id"):
+        ticket = (cleaned.get("ticket_id") or "").strip()
+        if not ticket or _is_transport_line(ticket):
             continue
         writer.writerow({column: cleaned[column] for column in REQUIRED_COLUMNS})
         wrote = True

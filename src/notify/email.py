@@ -98,6 +98,15 @@ def build_notice(event: dict) -> tuple[str, str]:
     )
 
 
+def _is_transport_ticket(ticket: str) -> bool:
+    text = ticket.strip()
+    return text.startswith("--") or text.lower().startswith("content-")
+
+
+def _real_rejects(rejects: list) -> list:
+    return [item for item in rejects if not _is_transport_ticket(str(item.get("ticket_id") or ""))]
+
+
 def _file_counts(layers: list, rejects: list) -> tuple[int | None, int | None, int]:
     by_layer = {item.get("layer"): item for item in layers}
     bronze = by_layer.get("bronze") or {}
@@ -105,10 +114,19 @@ def _file_counts(layers: list, rejects: list) -> tuple[int | None, int | None, i
     sent = bronze.get("output_count")
     if sent is None:
         sent = bronze.get("input_count")
+    if sent is None:
+        sent = silver.get("input_count")
+    real = _real_rejects(rejects)
+    noise = len(rejects) - len(real)
+    if sent is not None and noise:
+        sent -= noise
+    if rejects:
+        missing = len(real)
+    else:
+        missing = silver.get("rejected_count")
+        if missing is None:
+            missing = 0
     processed = silver.get("output_count")
-    missing = silver.get("rejected_count")
-    if missing is None:
-        missing = len(rejects)
     return sent, processed, int(missing or 0)
 
 
@@ -116,16 +134,18 @@ def _omitted(layers: list, rejects: list) -> list[str]:
     sent, processed, missing = _file_counts(layers, rejects)
     if missing <= 0:
         return []
-    sent_text = str(sent) if sent is not None else "los enviados"
     processed_text = str(processed) if processed is not None else "los válidos"
+    omitted = f"No se procesaron {missing} registros enviados."
+    if sent is not None:
+        omitted = f"No se procesaron {missing} de {sent} registros enviados."
     lines = [
         "",
-        f"No se procesaron {missing} de {sent_text} registros enviados.",
+        omitted,
         f"Se procesaron {processed_text} registros correctos.",
         "",
         "Registros no procesados:",
     ]
-    shown = list(rejects)[:30]
+    shown = _real_rejects(rejects)[:30]
     for item in shown:
         ticket = item.get("ticket_id") or "sin ticket_id"
         reason = item.get("reason") or "dato inválido"
@@ -147,6 +167,32 @@ def _trace(layers: list) -> list[str]:
     return lines
 
 
+def _phase_messages(payload: dict) -> list[str]:
+    found: list[str] = []
+    direct = payload.get("ErrorMessage") or payload.get("errorMessage")
+    if direct:
+        found.append(str(direct))
+    containers = [payload]
+    build = payload.get("Build") or payload.get("build")
+    if isinstance(build, dict):
+        containers.append(build)
+    for container in containers:
+        phases = container.get("Phases") or container.get("phases") or []
+        for phase in phases:
+            if not isinstance(phase, dict):
+                continue
+            status = str(phase.get("PhaseStatus") or phase.get("phaseStatus") or "")
+            if status and status not in {"FAILED", "FAULT", "CLIENT_ERROR"}:
+                continue
+            for context in phase.get("Contexts") or phase.get("contexts") or []:
+                if not isinstance(context, dict):
+                    continue
+                message = context.get("Message") or context.get("message") or ""
+                if message:
+                    found.append(str(message))
+    return found
+
+
 def _detail(cause: str) -> str:
     text = cause.strip() or "Sin detalle"
     try:
@@ -155,14 +201,9 @@ def _detail(cause: str) -> str:
         return text[:1500]
     if not isinstance(payload, dict):
         return text[:1500]
-    message = payload.get("ErrorMessage")
-    if message:
-        return str(message)[:1500]
-    for phase in payload.get("Phases") or []:
-        for context in phase.get("Contexts") or []:
-            found = context.get("Message") or ""
-            if found:
-                return str(found)[:1500]
+    messages = _phase_messages(payload)
+    if messages:
+        return messages[-1][:1500]
     return text[:1500]
 
 

@@ -1,3 +1,5 @@
+import json
+
 from notify.email import build_notice
 
 
@@ -67,3 +69,39 @@ def test_notice_names_records_left_out_of_the_file() -> None:
     assert "Se procesaron 18 registros correctos." in message
     assert "- T-019: monto vacío" in message
     assert "- T-022: monto vacío" in message
+
+
+def test_boundary_line_is_not_counted_as_a_ticket() -> None:
+    subject, message = build_notice(
+        {
+            "outcome": "FAIL",
+            "run_id": "abc",
+            "load_date": "2026-10-07",
+            "layers": [
+                {"layer": "silver", "input_count": 23, "output_count": 18, "rejected_count": 5},
+            ],
+            "rejects": [
+                {"ticket_id": "T-019", "reason": "monto vacío"},
+                {"ticket_id": "T-020", "reason": "monto vacío"},
+                {"ticket_id": "T-021", "reason": "monto vacío"},
+                {"ticket_id": "T-022", "reason": "monto vacío"},
+                {"ticket_id": "----------------------------527214442355101885544272--", "reason": "monto vacío"},
+            ],
+            "cause": json.dumps({
+                "Build": {
+                    "Phases": [
+                        {
+                            "PhaseStatus": "FAILED",
+                            "Contexts": [{"Message": "No existen metricas de bronze"}],
+                        }
+                    ]
+                }
+            }),
+        }
+    )
+    assert "No se procesaron 4 de 22 registros enviados." in message
+    assert "Se procesaron 18 registros correctos." in message
+    assert "527214442355101885544272" not in message
+    assert "No existen metricas de bronze" in message
+    assert "SdkHttpMetadata" not in message
+    assert subject.startswith("Fallo") or "no concuerda" in subject

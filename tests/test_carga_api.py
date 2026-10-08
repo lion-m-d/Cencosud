@@ -39,6 +39,8 @@ def test_postman_file_upload_is_accepted() -> None:
     csv_text = csv_from_request(event)
     assert csv_text.startswith("ticket_id,tienda_id,fecha_venta,monto\n")
     assert "T-001,S-01,2026-10-07,10.50" in csv_text
+    assert "PostmanBoundary" not in csv_text
+    assert "--" not in csv_text.split("\n", 1)[-1]
 
 
 def test_semicolon_csv_is_normalized() -> None:
