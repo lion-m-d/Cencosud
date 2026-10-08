@@ -31,7 +31,6 @@ python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[dev]"
 pytest
-python demo/run_scenarios.py
 ```
 
 En PowerShell, la activación es `.venv\Scripts\Activate.ps1` y el `PYTHONPATH` no es necesario
