@@ -3,8 +3,5 @@ s3_bucket_carga_data_name = "s3-bucket-carga-data"
 environment               = "dev"
 notification_email        = "lion180596@gmail.com"
 
-# Opcional. Si se habilita, EventBridge usa raw/ventas.csv y la fecha UTC de ejecución.
-# eventbridge_schedule_expression = "cron(0 8 * * ? *)"
-
 # Sólo para entornos efímeros:
 # force_destroy_buckets = true

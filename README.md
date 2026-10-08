@@ -9,9 +9,9 @@ verde cuando no cargó datos o incumplió su contrato de volumen/frescura.
 | --- | --- | --- |
 | `01-pyspark-pipeline` | Python + PySpark | Extracción y Bronze |
 | `02-dbt-transformations` | DBT + SQL | Silver y Gold |
-| `03-validation-engine` | Python | Reconciliación de Silver y Gold dentro del build DBT |
+| `src/reconciliation` | Python | Cuadratura reusable de Bronze, Silver y Gold |
 
-El orden en `us-east-2` es CSV, PySpark con validación de Bronze, y un solo CodeBuild que hace DBT Silver, comparación, DBT Gold y comparación. Los registros de esa comparación están en DynamoDB. Si una validación falla, la Lambda envía la alerta a `lion180596@gmail.com` y el pipeline no sigue. Las ventas no se guardan en DynamoDB: siguen en Iceberg.
+El orden en `us-east-2` es CSV, PySpark con validación de Bronze, y un solo CodeBuild que hace DBT Silver, comparación, DBT Gold y comparación. Las ventas quedan en Iceberg. DynamoDB guarda la traza y una copia de cada fila. Si una validación falla, la Lambda envía la alerta a `lion180596@gmail.com` y el pipeline no sigue.
 
 El bucket físico es `s3-bucket-carga-data`. AWS no acepta el guion bajo de
 `s3_bucket_carga_data`, así que ese nombre queda como identificador del recurso Terraform.
@@ -41,7 +41,7 @@ después de instalar el paquete.
 
 - Terraform 1.6 o superior.
 - AWS CLI autenticado con permisos para crear IAM, S3, Glue, CodeBuild, Step Functions,
-  EventBridge y SNS.
+  SNS.
 
 ## Despliegue
 

@@ -91,21 +91,6 @@ variable "notification_email" {
   nullable    = true
 }
 
-variable "eventbridge_schedule_expression" {
-  description = "Expresión rate(...) o cron(...) opcional. null deshabilita la ejecución programada."
-  type        = string
-  default     = null
-  nullable    = true
-
-  validation {
-    condition = (
-      var.eventbridge_schedule_expression == null ||
-      can(regex("^(rate|cron)\\(.+\\)$", var.eventbridge_schedule_expression))
-    )
-    error_message = "La expresión debe usar rate(...) o cron(...)."
-  }
-}
-
 variable "s3_bucket_carga_data_name" {
   description = "Nombre físico del bucket. AWS rechaza guiones bajos, por eso el recurso s3_bucket_carga_data usa guiones."
   type        = string

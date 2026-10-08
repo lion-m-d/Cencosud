@@ -41,11 +41,6 @@ output "notification_topic_arn" {
   value       = aws_sns_topic.pipeline.arn
 }
 
-output "eventbridge_rule_arn" {
-  description = "ARN de la regla programada, si fue habilitada."
-  value       = try(aws_cloudwatch_event_rule.schedule[0].arn, null)
-}
-
 output "carga_endpoint" {
   description = "POST de Postman que carga el CSV y arranca el pipeline."
   value       = "${aws_apigatewayv2_api.carga.api_endpoint}/carga"

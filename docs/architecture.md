@@ -73,7 +73,7 @@ que una edición manual silenciosa cambie el significado histórico de una ejecu
 ## Seguridad y límites
 
 - Buckets bloquean acceso público y cifran objetos.
-- Glue, CodeBuild, Step Functions y EventBridge usan roles separados.
+- Glue, CodeBuild y Step Functions usan roles separados.
 - El correo SNS requiere confirmar la suscripción después del despliegue.
 - Para producción se recomienda KMS administrado por cliente, Lake Formation, VPC endpoints,
   alarmas de ausencia de ejecución y expiración de snapshots Iceberg.
