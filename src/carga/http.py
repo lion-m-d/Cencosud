@@ -35,6 +35,7 @@ def handler(event: dict, context) -> dict:
             "message": "Carga recibida. El pipeline inició en us-east-2.",
             "bucket": bucket,
             "key": key,
+            "file_name": accepted.file_name,
             "load_date": accepted.load_date,
             "execution_arn": accepted.execution_arn,
         },

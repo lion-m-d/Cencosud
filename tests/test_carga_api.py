@@ -1,6 +1,7 @@
 import pytest
 
-from carga.sales_file import csv_from_request, resolve_load_date
+from carga.aws import S3CsvStore
+from carga.sales_file import csv_from_request, original_file_name, resolve_load_date
 
 
 def test_csv_request_is_accepted() -> None:
@@ -41,6 +42,7 @@ def test_postman_file_upload_is_accepted() -> None:
     assert "T-001,S-01,2026-10-07,10.50" in csv_text
     assert "PostmanBoundary" not in csv_text
     assert "--" not in csv_text.split("\n", 1)[-1]
+    assert original_file_name(event) == "ventas.csv"
 
 
 def test_semicolon_csv_is_normalized() -> None:
@@ -56,6 +58,41 @@ def test_postman_path_reference_is_rejected() -> None:
     event = {"headers": {"content-type": "text/csv"}, "body": "@demo/data/ventas.csv"}
     with pytest.raises(ValueError, match="form-data"):
         csv_from_request(event)
+
+
+class _Missing(Exception):
+    def __init__(self) -> None:
+        self.response = {"Error": {"Code": "404"}}
+
+
+class _Bucket:
+    def __init__(self, names: set[str]) -> None:
+        self.names = set(names)
+        self.saved = ""
+
+    def head_object(self, Bucket: str, Key: str) -> dict:
+        if Key not in self.names:
+            raise _Missing()
+        return {}
+
+    def put_object(self, **kwargs) -> dict:
+        self.saved = kwargs["Key"]
+        return {}
+
+
+def test_upload_keeps_the_original_name() -> None:
+    bucket = _Bucket(set())
+    uri, stored = S3CsvStore(bucket, "s3-bucket-carga-data", "raw/").put_csv("a\n", "ventas_error.csv")
+    assert stored == "ventas_error.csv"
+    assert uri == "s3://s3-bucket-carga-data/raw/ventas_error.csv"
+    assert bucket.saved == "raw/ventas_error.csv"
+
+
+def test_repeated_name_uses_the_next_suffix() -> None:
+    bucket = _Bucket({"raw/ventas.csv", "raw/ventas_1.csv"})
+    _uri, stored = S3CsvStore(bucket, "s3-bucket-carga-data", "raw/").put_csv("a\n", "ventas.csv")
+    assert stored == "ventas_2.csv"
+    assert bucket.saved == "raw/ventas_2.csv"
 
 
 def test_missing_column_is_rejected() -> None:

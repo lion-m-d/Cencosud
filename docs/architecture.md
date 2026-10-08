@@ -42,7 +42,7 @@ pueden unir las métricas de todas las capas aunque los motores sean distintos.
 Todo el despliegue queda fijo en `us-east-2`. Hay un solo bucket, `s3-bucket-carga-data`,
 referenciado en Terraform como `s3_bucket_carga_data`.
 
-1. Postman hace `POST /carga`. La Lambda `carga` guarda el CSV y arranca Step Functions.
+1. Postman hace `POST /carga`. La Lambda `carga` guarda el CSV con su nombre original y arranca Step Functions. Si el nombre ya está en S3, agrega `_1`, `_2`. El correo nombra ese archivo.
 2. `01-pyspark-pipeline` escribe `bronze.ventas`, mide esa capa y valida Bronze. El registro queda en DynamoDB.
 3. `02-dbt-transformations` construye Silver, mide la capa en SQL y el motor compara Bronze contra Silver. Después construye Gold y compara Silver contra Gold. Los veredictos quedan en la misma tabla DynamoDB.
 4. La misma Lambda publica el correo. `PASS` lista los pasos validados. `FAIL` indica que la carga no concuerda, o el fallo de la etapa, en `lion180596@gmail.com`.

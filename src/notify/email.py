@@ -19,6 +19,7 @@ def build_notice(event: dict) -> tuple[str, str]:
     rejects = event.get("rejects") or []
     trace = _trace(layers)
     omitted = _omitted(layers, rejects)
+    archive = _archive(event, layers, rejects)
     if event.get("outcome") == "PASS":
         lines = [f"{index}. {label} — validado" for index, (_, label) in enumerate(STEPS, start=1)]
         sent, processed, missing = _file_counts(layers, rejects)
@@ -36,6 +37,7 @@ def build_notice(event: dict) -> tuple[str, str]:
                     "Resultado: VALIDADO",
                     f"run_id: {run_id}",
                     f"load_date: {load_date}",
+                    *archive,
                     summary,
                     "",
                     "Pasos registrados:",
@@ -59,6 +61,7 @@ def build_notice(event: dict) -> tuple[str, str]:
                     "Resultado: FALLO",
                     f"run_id: {run_id}",
                     f"load_date: {load_date}",
+                    *archive,
                     "El pipeline se detuvo antes de cerrar la validación.",
                     *trace,
                     *omitted,
@@ -84,6 +87,7 @@ def build_notice(event: dict) -> tuple[str, str]:
                 "Resultado: NO CONCUERDA",
                 f"run_id: {run_id}",
                 f"load_date: {load_date}",
+                *archive,
                 "La carga nueva no concuerda con la capa anterior o con la carga previa.",
                 "",
                 "Pasos registrados:",
@@ -96,6 +100,20 @@ def build_notice(event: dict) -> tuple[str, str]:
             ]
         ),
     )
+
+
+def _archive(event: dict, layers: list, rejects: list) -> list[str]:
+    name = str(event.get("file_name") or "").strip() or "sin nombre"
+    sent, _processed, missing = _file_counts(layers, rejects)
+    lines = [f"Archivo procesado: {name}"]
+    if event.get("outcome") == "FAIL" or missing > 0:
+        if missing > 0 and sent is not None:
+            lines.append(f"El archivo {name} falló en los registros: no se procesaron {missing} de {sent}.")
+        elif missing > 0:
+            lines.append(f"El archivo {name} falló en los registros: no se procesaron {missing}.")
+        else:
+            lines.append(f"El archivo {name} falló en los registros.")
+    return lines
 
 
 def _is_transport_ticket(ticket: str) -> bool:

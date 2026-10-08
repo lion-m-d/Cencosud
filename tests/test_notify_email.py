@@ -105,3 +105,28 @@ def test_boundary_line_is_not_counted_as_a_ticket() -> None:
     assert "No existen metricas de bronze" in message
     assert "SdkHttpMetadata" not in message
     assert subject.startswith("Fallo") or "no concuerda" in subject
+    assert "Archivo procesado: sin nombre" in message
+    assert "falló en los registros" in message
+
+
+def test_notice_names_the_file_and_failed_records() -> None:
+    _subject, message = build_notice(
+        {
+            "outcome": "PASS",
+            "run_id": "abc",
+            "load_date": "2026-10-07",
+            "file_name": "ventas_error.csv",
+            "layers": [
+                {"layer": "bronze", "input_count": 22, "output_count": 22},
+                {"layer": "silver", "input_count": 22, "output_count": 18, "rejected_count": 4},
+            ],
+            "rejects": [
+                {"ticket_id": "T-019", "reason": "monto vacío"},
+                {"ticket_id": "T-020", "reason": "monto vacío"},
+                {"ticket_id": "T-021", "reason": "monto vacío"},
+                {"ticket_id": "T-022", "reason": "monto vacío"},
+            ],
+        }
+    )
+    assert "Archivo procesado: ventas_error.csv" in message
+    assert "El archivo ventas_error.csv falló en los registros: no se procesaron 4 de 22." in message

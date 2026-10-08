@@ -51,5 +51,6 @@ output "sample_execution_input" {
   value = {
     input_path = "s3://${aws_s3_bucket.s3_bucket_carga_data.id}/${local.raw_prefix}ventas.csv"
     load_date  = "2026-10-07"
+    file_name  = "ventas.csv"
   }
 }

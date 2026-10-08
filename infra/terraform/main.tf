@@ -152,14 +152,6 @@ resource "aws_s3_object" "dbt_project" {
   server_side_encryption = "AES256"
 }
 
-resource "aws_s3_object" "demo_sales" {
-  bucket                 = aws_s3_bucket.s3_bucket_carga_data.id
-  key                    = "${local.raw_prefix}ventas.csv"
-  source                 = "${path.module}/../../demo/data/ventas.csv"
-  etag                   = filemd5("${path.module}/../../demo/data/ventas.csv")
-  server_side_encryption = "AES256"
-}
-
 # -----------------------------------------------------------------------------
 # Glue Data Catalog y jobs
 # -----------------------------------------------------------------------------
@@ -678,6 +670,7 @@ resource "aws_sfn_state_machine" "reconciliation" {
           "run_id.$"     = "$.run_id"
           "input_path.$" = "$.input.input_path"
           "load_date.$"  = "$.input.load_date"
+          "file_name.$"  = "$.input.file_name"
         }
         Next = "RunBronze"
       }
@@ -687,6 +680,7 @@ resource "aws_sfn_state_machine" "reconciliation" {
           "run_id.$"     = "$.run_id"
           "input_path.$" = "$.input.input_path"
           "load_date.$"  = "States.ArrayGetItem(States.StringSplit($$.Execution.StartTime, 'T'), 0)"
+          "file_name.$"  = "$.input.file_name"
         }
         Next = "RunBronze"
       }
@@ -741,9 +735,10 @@ resource "aws_sfn_state_machine" "reconciliation" {
         Parameters = {
           FunctionName = local.carga_function_arn
           Payload = {
-            outcome      = "PASS"
-            "run_id.$"   = "$.run_id"
+            outcome       = "PASS"
+            "run_id.$"    = "$.run_id"
             "load_date.$" = "$.load_date"
+            "file_name.$" = "$.file_name"
           }
         }
         ResultPath = "$.notice"
@@ -762,6 +757,7 @@ resource "aws_sfn_state_machine" "reconciliation" {
             outcome       = "FAIL"
             "run_id.$"    = "$.run_id"
             "load_date.$" = "$.load_date"
+            "file_name.$" = "$.file_name"
             "cause.$"     = "$.error.Cause"
           }
         }
@@ -812,7 +808,7 @@ data "aws_iam_policy_document" "carga" {
   }
 
   statement {
-    actions   = ["s3:PutObject"]
+    actions   = ["s3:PutObject", "s3:GetObject"]
     resources = ["${aws_s3_bucket.s3_bucket_carga_data.arn}/${local.raw_prefix}*"]
   }
 
@@ -856,7 +852,7 @@ resource "aws_lambda_function" "carga" {
   environment {
     variables = {
       BUCKET_NAME       = aws_s3_bucket.s3_bucket_carga_data.id
-      OBJECT_KEY        = "${local.raw_prefix}ventas.csv"
+      RAW_PREFIX        = local.raw_prefix
       STATE_MACHINE_ARN = local.state_machine_arn
       TOPIC_ARN         = aws_sns_topic.pipeline.arn
       CONTROL_TABLE     = aws_dynamodb_table.control.name
@@ -870,7 +866,7 @@ resource "aws_apigatewayv2_api" "carga" {
   description   = "Recibe el CSV de ventas desde Postman."
 
   cors_configuration {
-    allow_headers = ["content-type", "x-load-date"]
+    allow_headers = ["content-type", "x-load-date", "x-file-name"]
     allow_methods = ["POST", "OPTIONS"]
     allow_origins = ["*"]
   }

@@ -60,10 +60,12 @@ Después del `apply`:
 1. Confirmar la suscripción que SNS envía a `lion180596@gmail.com`. Sin esa confirmación el correo no llega.
 2. En Postman, importar `postman/carga-ventas.postman_collection.json`. En **Body** elige **form-data**, tipo **File**, y selecciona `demo/data/ventas.csv`. No escribas `@demo/data/ventas.csv` en el cuerpo: Postman lo envía como texto. Una respuesta `202` incluye `execution_arn`.
 
-El `POST /carga` acepta `text/csv` o JSON con `records`. Guarda el archivo en
-`s3://s3-bucket-carga-data/raw/ventas.csv` y arranca Step Functions. La fecha sale del header
+El `POST /carga` acepta `text/csv` o JSON con `records`. Sube el archivo a
+`s3://s3-bucket-carga-data/raw/` con el mismo nombre. Si ese nombre ya existe, usa
+`nombre_1.csv`, `nombre_2.csv` y así en adelante. La fecha sale del header
 `X-Load-Date`, del query `load_date` o de `fecha_venta`. La respuesta `202` incluye
-`execution_arn`.
+`execution_arn` y `file_name`. El correo indica ese nombre y, si hubo registros
+rechazados o la validación falló, dice que el archivo falló en los registros.
 
 Ejemplo conceptual de entrada:
 
@@ -71,7 +73,7 @@ Ejemplo conceptual de entrada:
 {
   "input_path": "s3://BUCKET/raw/ventas.csv",
   "load_date": "2026-10-07",
-  "pipeline": "ventas"
+  "file_name": "ventas.csv"
 }
 ```
 

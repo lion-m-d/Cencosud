@@ -6,7 +6,9 @@ import base64
 import csv
 import io
 import json
+import re
 from datetime import date
+from urllib.parse import unquote
 
 REQUIRED_COLUMNS = ("ticket_id", "tienda_id", "fecha_venta", "monto")
 
@@ -95,6 +97,32 @@ def csv_from_request(event: dict) -> str:
             writer.writerow({column: row[column] for column in REQUIRED_COLUMNS})
         body = stream.getvalue()
     return _normalize_csv(_csv_section(body))
+
+
+_FILENAME = re.compile(
+    r"filename\*=UTF-8''([^;\r\n]+)|filename=\"([^\"]+)\"|filename=([^;\s]+)",
+    re.IGNORECASE,
+)
+
+
+def safe_file_name(raw: str) -> str:
+    name = str(raw).replace("\\", "/").split("/")[-1].strip().strip('"')
+    name = "".join(character for character in name if character.isprintable() and character not in "/\\")
+    if not name or name in {".", ".."}:
+        return "ventas.csv"
+    if "." not in name:
+        return f"{name}.csv"
+    return name
+
+
+def original_file_name(event: dict) -> str:
+    query = event.get("queryStringParameters") or {}
+    raw = _headers(event).get("x-file-name") or query.get("file_name")
+    if not raw:
+        match = _FILENAME.search(decode_body(event))
+        if match:
+            raw = unquote(next(group for group in match.groups() if group))
+    return safe_file_name(raw or "ventas.csv")
 
 
 def resolve_load_date(event: dict, csv_text: str) -> str:
