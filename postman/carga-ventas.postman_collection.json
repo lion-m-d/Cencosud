@@ -1,0 +1,43 @@
+{
+  "info": {
+    "name": "Cencosud - Carga de ventas",
+    "description": "Body form-data, campo archivo de tipo File. Selecciona el CSV en Postman. No escribas la ruta.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://9xcfo4nyoe.execute-api.us-east-2.amazonaws.com"
+    },
+    {
+      "key": "load_date",
+      "value": "2026-10-07"
+    }
+  ],
+  "item": [
+    {
+      "name": "Cargar ventas CSV",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Load-Date",
+            "value": "{{load_date}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "archivo",
+              "type": "file",
+              "src": ""
+            }
+          ]
+        },
+        "url": "{{base_url}}/carga",
+        "description": "En Body, el campo archivo es de tipo File. Pulsa Select Files y elige ventas.csv."
+      }
+    }
+  ]
+}

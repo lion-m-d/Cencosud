@@ -1,0 +1,14 @@
+version: 2
+
+models:
+  - name: ventas_tienda_dia
+    description: Agregado de ventas al grano tienda y fecha.
+    columns:
+      - name: fecha_venta
+        tests: [not_null]
+      - name: tienda_id
+        tests: [not_null]
+      - name: run_id
+        tests: [not_null]
+      - name: monto_total
+        tests: [not_null]

@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: Ventas cargadas por 01-pyspark-pipeline.
+    schema: "{{ env_var('DBT_BRONZE_DATABASE', 'bronze') }}"
+    tables:
+      - name: ventas
+        identifier: "{{ env_var('DBT_BRONZE_TABLE', 'ventas') }}"
+        columns:
+          - name: ticket_id
+            tests: [not_null, unique]
+          - name: tienda_id
+            tests: [not_null]
+          - name: fecha_venta
+            tests: [not_null]
+          - name: monto
+            tests: [not_null]
+          - name: fecha_carga
+            tests: [not_null]

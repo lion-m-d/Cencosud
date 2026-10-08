@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: ventas
+    description: Tickets válidos de la ejecución actual.
+    columns:
+      - name: ticket_id
+        tests: [not_null, unique]
+      - name: tienda_id
+        tests: [not_null]
+      - name: fecha_venta
+        tests: [not_null]
+      - name: monto
+        tests: [not_null]
+      - name: run_id
+        tests: [not_null]

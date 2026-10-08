@@ -1,0 +1,29 @@
+name: cencosud_transformations
+version: "1.0.0"
+config-version: 2
+
+profile: cencosud_transformations
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+clean-targets: ["target", "dbt_packages", "logs"]
+
+vars:
+  run_id: "{{ env_var('RUN_ID', invocation_id) }}"
+
+models:
+  cencosud_transformations:
+    silver:
+      +schema: silver
+      +materialized: table
+      +file_format: iceberg
+      +table_type: iceberg
+    gold:
+      +schema: gold
+      +materialized: table
+      +file_format: iceberg
+      +table_type: iceberg
+
+on-run-end:
+  - "{{ register_reconciliation_run(results) }}"

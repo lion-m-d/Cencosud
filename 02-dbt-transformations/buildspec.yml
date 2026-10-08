@@ -1,0 +1,31 @@
+version: 0.2
+
+env:
+  shell: bash
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - python -m pip install --upgrade pip
+      - python -m pip install dbt-core dbt-glue
+
+  pre_build:
+    commands:
+      - export AWS_REGION="${AWS_REGION:-us-east-2}"
+      - export RUN_ID="${RUN_ID:-${CODEBUILD_BUILD_ID:-manual-run}}"
+      - export DBT_PROJECT_DIR="${DBT_PROJECT_DIR:-.}"
+      - aws s3 cp "s3://${DATA_BUCKET}/libraries/reconciliation-library.zip" /tmp/reconciliation-library.zip
+      - unzip -qo /tmp/reconciliation-library.zip -d /tmp/reconciliation
+      - aws s3 cp "s3://${DATA_BUCKET}/config/reconciliation_rules.yml" /tmp/reconciliation_rules.yml
+      - dbt deps --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROJECT_DIR"
+
+  build:
+    commands:
+      - set -o pipefail && dbt run --select path:models/silver --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROJECT_DIR" --vars "{\"run_id\":\"${RUN_ID}\"}" 2>&1 | tee /tmp/dbt-silver.log
+      - dbt test --select path:models/silver --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROJECT_DIR" --vars "{\"run_id\":\"${RUN_ID}\"}"
+      - PYTHONPATH=/tmp/reconciliation RULES_PATH=/tmp/reconciliation_rules.yml DBT_LOG=/tmp/dbt-silver.log STAGE=silver python -m reconciliation.validate_cli
+      - set -o pipefail && dbt run --select path:models/gold --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROJECT_DIR" --vars "{\"run_id\":\"${RUN_ID}\"}" 2>&1 | tee /tmp/dbt-gold.log
+      - dbt test --select path:models/gold --project-dir "$DBT_PROJECT_DIR" --profiles-dir "$DBT_PROJECT_DIR" --vars "{\"run_id\":\"${RUN_ID}\"}"
+      - PYTHONPATH=/tmp/reconciliation RULES_PATH=/tmp/reconciliation_rules.yml DBT_LOG=/tmp/dbt-gold.log STAGE=gold python -m reconciliation.validate_cli
