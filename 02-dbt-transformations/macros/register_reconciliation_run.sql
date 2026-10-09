@@ -149,8 +149,8 @@
                     "layer": "gold",
                     "table_name": "gold.ventas_tienda_dia",
                     "output_count": row[0],
-                    "grain_count": row[1],
-                    "grain_counts": {"tienda_id|fecha_venta": row[1]},
+                    "grain_count": row[0],
+                    "grain_counts": {"ticket_id": row[0], "tienda_id|fecha_venta": row[1]},
                     "max_load_date": row[2],
                     "input_count": row[3]
                 }) %}

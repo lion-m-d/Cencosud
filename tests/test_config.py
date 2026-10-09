@@ -10,6 +10,9 @@ def test_load_example_contracts() -> None:
     assert len(rules) == 3
     assert find_rule(rules, "ventas_bronze").target_layer == "bronze"
     assert find_rule(rules, "ventas_bronze_silver").grain == ("ticket_id",)
+    assert find_rule(rules, "ventas_silver_gold").grain == ("ticket_id",)
+    assert find_rule(rules, "ventas_silver_gold").min_ratio == 1.0
+    assert find_rule(rules, "ventas_silver_gold").max_ratio == 1.0
 
 
 def test_missing_rule_is_explicit() -> None:

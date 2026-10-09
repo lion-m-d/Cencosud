@@ -90,23 +90,27 @@ def test_unexplained_loss_still_fails() -> None:
     assert result.status == Status.FAIL
 
 
-def test_rejects_do_not_change_another_grain() -> None:
-    source = metrics("silver", 6, grain_count=6, output_count=18)
-    target = metrics(
-        "gold",
-        6,
-        grain_count=6,
-        output_count=6,
-        rejected_count=4,
-        rejected_grain=("ticket_id",),
-    )
+def test_gold_requires_the_same_record_count_as_silver() -> None:
+    source = metrics("silver", 22, grain_count=22, output_count=22)
+    target = metrics("gold", 22, grain_count=22, output_count=22)
     result = evaluate(
-        rule(grain=("tienda_id", "fecha_venta"), min_ratio=0.98, max_ratio=1.02, source_layer="silver", target_layer="gold"),
+        rule(grain=("ticket_id",), min_ratio=1.0, max_ratio=1.0, source_layer="silver", target_layer="gold"),
         source,
         target,
     )
     assert result.ratio == pytest.approx(1.0)
     assert result.status == Status.PASS
+
+
+def test_gold_fails_when_a_loaded_record_is_missing() -> None:
+    source = metrics("silver", 22, grain_count=22, output_count=22)
+    target = metrics("gold", 21, grain_count=21, output_count=21)
+    result = evaluate(
+        rule(grain=("ticket_id",), min_ratio=1.0, max_ratio=1.0, source_layer="silver", target_layer="gold"),
+        source,
+        target,
+    )
+    assert result.status == Status.FAIL
 
 
 def test_different_runs_are_rejected() -> None:

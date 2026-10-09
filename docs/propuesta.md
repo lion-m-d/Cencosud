@@ -18,7 +18,7 @@ físicas.
 | --- | --- | --- |
 | Bronze | `ticket_id` | Al menos 1 fila. La fecha de carga coincide con la de la ejecución. |
 | Bronze → Silver | `ticket_id` | Silver conserva entre el 95 % y el 100 % de los tickets. Puede filtrar nulos; no puede perder más de ese margen. |
-| Silver → Gold | `tienda_id` + `fecha_venta` | Gold conserva entre el 98 % y el 102 % de esas combinaciones. Agrupar 22 tickets en 6 tiendas es válido: no se exige 1:1. |
+| Silver → Gold | `ticket_id` | Gold debe cargar la misma cantidad de registros que Silver. El resumen sigue en 6 filas de tienda y día; la suma de `tickets` tiene que ser igual a los registros de Silver. |
 
 Además, si ya existe una carga anterior, ninguna capa puede caer más del 30 % sin fallar. Así
 una carga “muchos menos de lo esperado” no termina en verde. Los tests DBT (`not_null`,

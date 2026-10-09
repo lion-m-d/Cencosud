@@ -32,10 +32,10 @@ rules:
     target_layer: gold
     source_table: silver.ventas
     target_table: gold.ventas_tienda_dia
-    grain: [tienda_id, fecha_venta]
+    grain: [ticket_id]
     min_rows: 1
-    min_ratio: 0.98
-    max_ratio: 1.02
+    min_ratio: 1.00
+    max_ratio: 1.00
     max_drop_pct: 0.30
     load_date_column: fecha_carga
     severity: FAIL
